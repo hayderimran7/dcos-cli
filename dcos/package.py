@@ -58,10 +58,13 @@ def install_app(pkg, revision, init_client, options, app_id):
     init_desc = pkg.marathon_json(revision, options)
 
     if app_id is not None:
-        logger.debug('Setting app ID to "%s" (was "%s")',
-                     app_id,
-                     init_desc['id'])
-        init_desc['id'] = app_id
+        if not isinstance(init_desc, list):
+            logger.debug('Setting app ID to "%s" (was "%s")',
+                         app_id,
+                         init_desc['id'])
+            init_desc['id'] = app_id
+        else:
+            logger.debug('Not setting app ID for multi app json')
 
     # Send the descriptor to init
     init_client.add_app(init_desc)
@@ -1373,10 +1376,17 @@ class Package():
         package_labels = _make_package_labels(self, revision, options)
 
         # Preserve existing labels
-        labels = init_desc.get('labels', {})
+        if not isinstance(init_desc, list):
+            labels = init_desc.get('labels', {})
 
-        labels.update(package_labels)
-        init_desc['labels'] = labels
+            labels.update(package_labels)
+            init_desc['labels'] = labels
+        else:
+            for i, app in enumerate(init_desc):
+                labels = app.get('labels', {})
+                labels.update(package_labels)
+                app['labels'] = labels
+                init_desc[i] = app
 
         return init_desc
 
